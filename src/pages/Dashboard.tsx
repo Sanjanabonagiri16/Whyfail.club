@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
@@ -7,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { useQuery } from '@tanstack/react-query';
-import { PlusCircle, BookOpen, Users, Target } from 'lucide-react';
+import { PlusCircle, BookOpen, Users, Target, ArrowRight } from 'lucide-react';
+import Navigation from '@/components/Navigation';
 
 const Dashboard = () => {
   const { user, loading } = useAuth();
@@ -88,26 +88,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-navy-900">
-      {/* Navigation */}
-      <nav className="bg-navy-800 border-b border-navy-700 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="flex space-x-8">
-            <h1 className="text-xl font-bold text-white">WhyFail.club</h1>
-            <div className="flex space-x-6">
-              <a href="/dashboard" className="text-gold-400 hover:text-gold-300">Dashboard</a>
-              <a href="/stories" className="text-gray-300 hover:text-white">Stories</a>
-              <a href="/mentalk" className="text-gray-300 hover:text-white">MenTalk</a>
-            </div>
-          </div>
-          <Button 
-            onClick={handleSignOut}
-            variant="outline"
-            className="border-gray-600 text-gray-300 hover:bg-navy-700"
-          >
-            Sign Out
-          </Button>
-        </div>
-      </nav>
+      <Navigation />
 
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Welcome Section */}
@@ -156,35 +137,47 @@ const Dashboard = () => {
             <CardHeader>
               <CardTitle className="text-white flex items-center justify-between">
                 My Journal
-                <Button size="sm" className="bg-gold-500 hover:bg-gold-600 text-navy-900">
-                  <PlusCircle className="w-4 h-4 mr-2" />
-                  Write New Entry
-                </Button>
+                <a href="/journal">
+                  <Button size="sm" className="bg-gold-500 hover:bg-gold-600 text-navy-900">
+                    <PlusCircle className="w-4 h-4 mr-2" />
+                    Write New Entry
+                  </Button>
+                </a>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {journalEntries?.length ? (
-                  journalEntries.map((entry) => (
-                    <div key={entry.id} className="p-4 bg-navy-700 rounded-lg">
-                      <h4 className="font-semibold text-white mb-2">{entry.title}</h4>
-                      <p className="text-gray-300 text-sm line-clamp-2">{entry.content}</p>
-                      <div className="mt-2 flex justify-between items-center">
-                        <span className="text-xs text-gray-400">
-                          {new Date(entry.created_at).toLocaleDateString()}
-                        </span>
-                        <Button size="sm" variant="outline" className="border-navy-600 text-gray-300">
-                          Read
-                        </Button>
+                  <>
+                    {journalEntries.slice(0, 3).map((entry) => (
+                      <div key={entry.id} className="p-4 bg-navy-700 rounded-lg">
+                        <h4 className="font-semibold text-white mb-2">{entry.title}</h4>
+                        <p className="text-gray-300 text-sm line-clamp-2">{entry.content}</p>
+                        <div className="mt-2 flex justify-between items-center">
+                          <span className="text-xs text-gray-400">
+                            {new Date(entry.created_at).toLocaleDateString()}
+                          </span>
+                          <Button size="sm" variant="outline" className="border-navy-600 text-gray-300">
+                            Read
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                    <a href="/journal">
+                      <Button variant="ghost" className="w-full text-gold-400 hover:text-gold-300">
+                        View All Entries
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </a>
+                  </>
                 ) : (
                   <div className="text-center py-8">
                     <p className="text-gray-400 mb-4">No journal entries yet</p>
-                    <Button className="bg-gold-500 hover:bg-gold-600 text-navy-900">
-                      Start Your Journey
-                    </Button>
+                    <a href="/journal">
+                      <Button className="bg-gold-500 hover:bg-gold-600 text-navy-900">
+                        Start Your Journey
+                      </Button>
+                    </a>
                   </div>
                 )}
               </div>
