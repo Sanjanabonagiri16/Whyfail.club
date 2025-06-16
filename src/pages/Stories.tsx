@@ -27,7 +27,7 @@ const Stories = () => {
         .from('stories')
         .select(`
           *,
-          profiles!inner(first_name, last_name, username)
+          profiles:user_id(first_name, last_name, username)
         `)
         .order('created_at', { ascending: false });
 
