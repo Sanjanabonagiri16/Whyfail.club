@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
@@ -25,10 +24,7 @@ const Stories = () => {
     queryFn: async () => {
       let query = supabase
         .from('stories')
-        .select(`
-          *,
-          profiles:user_id(first_name, last_name, username)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (searchTerm) {
@@ -42,6 +38,15 @@ const Stories = () => {
       const { data: storiesData, error } = await query;
       if (error) throw error;
 
+      // Fetch profiles separately
+      const userIds = storiesData?.map(story => story.user_id) || [];
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, username')
+        .in('id', userIds);
+      
+      if (profilesError) throw profilesError;
+
       // Fetch reactions separately
       const { data: reactions, error: reactionsError } = await supabase
         .from('story_reactions')
@@ -49,13 +54,17 @@ const Stories = () => {
       
       if (reactionsError) throw reactionsError;
 
-      // Combine stories with their reactions
-      const storiesWithReactions = storiesData?.map(story => ({
-        ...story,
-        story_reactions: reactions?.filter(reaction => reaction.story_id === story.id) || []
-      }));
+      // Combine stories with their profiles and reactions
+      const storiesWithData = storiesData?.map(story => {
+        const profile = profiles?.find(p => p.id === story.user_id);
+        return {
+          ...story,
+          profiles: profile || null,
+          story_reactions: reactions?.filter(reaction => reaction.story_id === story.id) || []
+        };
+      });
 
-      return storiesWithReactions;
+      return storiesWithData;
     },
   });
 
