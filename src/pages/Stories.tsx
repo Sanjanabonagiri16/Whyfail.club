@@ -27,8 +27,7 @@ const Stories = () => {
         .from('stories')
         .select(`
           *,
-          profiles!stories_user_id_fkey(first_name, last_name, username),
-          story_reactions(reaction_type, user_id)
+          profiles!inner(first_name, last_name, username)
         `)
         .order('created_at', { ascending: false });
 
@@ -40,9 +39,23 @@ const Stories = () => {
         query = query.eq('category', selectedCategory);
       }
 
-      const { data, error } = await query;
+      const { data: storiesData, error } = await query;
       if (error) throw error;
-      return data;
+
+      // Fetch reactions separately
+      const { data: reactions, error: reactionsError } = await supabase
+        .from('story_reactions')
+        .select('*');
+      
+      if (reactionsError) throw reactionsError;
+
+      // Combine stories with their reactions
+      const storiesWithReactions = storiesData?.map(story => ({
+        ...story,
+        story_reactions: reactions?.filter(reaction => reaction.story_id === story.id) || []
+      }));
+
+      return storiesWithReactions;
     },
   });
 
