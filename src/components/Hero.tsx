@@ -1,7 +1,10 @@
 
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 const Hero = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="relative py-20 px-6 text-center bg-gradient-to-br from-navy-900 via-navy-800 to-slate-900">
       <div className="max-w-4xl mx-auto animate-fade-in">
@@ -21,6 +24,7 @@ const Hero = () => {
           <Button 
             size="lg" 
             className="bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold text-lg px-8 py-4 hover-scale"
+            onClick={() => navigate('/auth')}
           >
             Tell Your Story
           </Button>
@@ -28,6 +32,7 @@ const Hero = () => {
             size="lg" 
             variant="outline" 
             className="border-gray-300 text-gray-300 hover:bg-navy-800 hover:text-white text-lg px-8 py-4 hover-scale"
+            onClick={() => navigate('/stories')}
           >
             Browse Stories
           </Button>
