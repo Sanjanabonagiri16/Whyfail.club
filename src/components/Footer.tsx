@@ -1,5 +1,9 @@
 
+import { useNavigate } from "react-router-dom";
+
 const Footer = () => {
+  const navigate = useNavigate();
+
   return (
     <footer className="py-12 px-6 bg-navy-900 border-t border-navy-700">
       <div className="max-w-6xl mx-auto">
@@ -14,27 +18,90 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold text-white mb-4">Community</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="#" className="text-gray-400 hover:text-gold-400 story-link">Browse Stories</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-gold-400 story-link">Share Your Story</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-gold-400 story-link">Community Guidelines</a></li>
+              <li>
+                <button 
+                  onClick={() => navigate('/stories')}
+                  className="text-gray-400 hover:text-gold-400 transition-colors"
+                >
+                  Browse Stories
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => navigate('/journal')}
+                  className="text-gray-400 hover:text-gold-400 transition-colors"
+                >
+                  Share Your Story
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => navigate('/community-guidelines')}
+                  className="text-gray-400 hover:text-gold-400 transition-colors"
+                >
+                  Community Guidelines
+                </button>
+              </li>
             </ul>
           </div>
           
           <div>
             <h4 className="font-semibold text-white mb-4">Support</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="#" className="text-gray-400 hover:text-gold-400 story-link">Help Center</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-gold-400 story-link">Crisis Resources</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-gold-400 story-link">Contact Us</a></li>
+              <li>
+                <button 
+                  onClick={() => navigate('/help')}
+                  className="text-gray-400 hover:text-gold-400 transition-colors"
+                >
+                  Help Center
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => navigate('/crisis-resources')}
+                  className="text-gray-400 hover:text-gold-400 transition-colors"
+                >
+                  Crisis Resources
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => navigate('/contact')}
+                  className="text-gray-400 hover:text-gold-400 transition-colors"
+                >
+                  Contact Us
+                </button>
+              </li>
             </ul>
           </div>
           
           <div>
             <h4 className="font-semibold text-white mb-4">Legal</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="#" className="text-gray-400 hover:text-gold-400 story-link">Privacy Policy</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-gold-400 story-link">Terms of Service</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-gold-400 story-link">Cookie Policy</a></li>
+              <li>
+                <button 
+                  onClick={() => navigate('/privacy')}
+                  className="text-gray-400 hover:text-gold-400 transition-colors"
+                >
+                  Privacy Policy
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => navigate('/terms')}
+                  className="text-gray-400 hover:text-gold-400 transition-colors"
+                >
+                  Terms of Service
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => navigate('/cookies')}
+                  className="text-gray-400 hover:text-gold-400 transition-colors"
+                >
+                  Cookie Policy
+                </button>
+              </li>
             </ul>
           </div>
         </div>

@@ -1,273 +1,276 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Heart, MessageCircle, Users, Filter, Flag } from 'lucide-react';
 import Navigation from '@/components/Navigation';
+import Footer from '@/components/Footer';
 import ReportContent from '@/components/ReportContent';
-import SOSButton from '@/components/SOSButton';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BookOpen, Search, Filter, Flag, Calendar, User, Eye } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const Stories = () => {
-  const { user, loading } = useAuth();
-  const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
+  const [filterTags, setFilterTags] = useState('all');
   const [reportModal, setReportModal] = useState<{
     isOpen: boolean;
     contentId: string;
-    reportedUserId: string;
-  }>({ isOpen: false, contentId: '', reportedUserId: '' });
+    authorId: string;
+  }>({ isOpen: false, contentId: '', authorId: '' });
 
-  const categories = ['all', 'Career Failure', 'Relationship', 'Mental Health', 'Addiction', 'Loss', 'Other'];
-
-  const { data: stories } = useQuery({
-    queryKey: ['stories', searchTerm, selectedCategory],
+  // Fetch public journal entries (stories)
+  const { data: stories = [], isLoading } = useQuery({
+    queryKey: ['public-stories', sortBy, filterTags, searchTerm],
     queryFn: async () => {
       let query = supabase
-        .from('stories')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from('journal_entries')
+        .select(`
+          *,
+          profiles!journal_entries_user_id_fkey (
+            first_name,
+            last_name,
+            is_anonymous_mode
+          )
+        `)
+        .eq('is_public', true);
 
+      // Apply search filter
       if (searchTerm) {
         query = query.or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`);
       }
 
-      if (selectedCategory !== 'all') {
-        query = query.eq('category', selectedCategory);
+      // Apply tag filter
+      if (filterTags !== 'all') {
+        query = query.contains('tags', [filterTags]);
       }
 
-      const { data: storiesData, error } = await query;
+      // Apply sorting
+      switch (sortBy) {
+        case 'newest':
+          query = query.order('created_at', { ascending: false });
+          break;
+        case 'oldest':
+          query = query.order('created_at', { ascending: true });
+          break;
+        case 'most_engaging':
+          // For now, just order by creation date
+          query = query.order('created_at', { ascending: false });
+          break;
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-
-      const userIds = storiesData?.map(story => story.user_id) || [];
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, username, is_anonymous_mode')
-        .in('id', userIds);
-      
-      if (profilesError) throw profilesError;
-
-      const { data: reactions, error: reactionsError } = await supabase
-        .from('story_reactions')
-        .select('*');
-      
-      if (reactionsError) throw reactionsError;
-
-      const storiesWithData = storiesData?.map(story => {
-        const profile = profiles?.find(p => p.id === story.user_id);
-        return {
-          ...story,
-          profiles: profile || null,
-          story_reactions: reactions?.filter(reaction => reaction.story_id === story.id) || []
-        };
-      });
-
-      return storiesWithData;
+      return data;
     },
   });
 
-  const reactionMutation = useMutation({
-    mutationFn: async ({ storyId, reactionType }: { storyId: string, reactionType: string }) => {
-      const { data: existingReaction } = await supabase
-        .from('story_reactions')
-        .select('*')
-        .eq('story_id', storyId)
-        .eq('user_id', user!.id)
-        .eq('reaction_type', reactionType)
-        .single();
+  // Set up real-time updates for public stories
+  useEffect(() => {
+    const channel = supabase
+      .channel('public-stories-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'journal_entries',
+          filter: 'is_public=eq.true',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['public-stories'] });
+        }
+      )
+      .subscribe();
 
-      if (existingReaction) {
-        const { error } = await supabase
-          .from('story_reactions')
-          .delete()
-          .eq('id', existingReaction.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('story_reactions')
-          .insert({
-            story_id: storyId,
-            user_id: user!.id,
-            reaction_type: reactionType,
-          });
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stories'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-navy-900 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
-      </div>
-    );
-  }
+  // Get unique tags for filtering
+  const allTags = [...new Set(stories.flatMap(story => story.tags || []))];
 
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  const getReactionCount = (story: any, reactionType: string) => {
-    return story.story_reactions?.filter((r: any) => r.reaction_type === reactionType).length || 0;
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
-  const hasUserReacted = (story: any, reactionType: string) => {
-    return story.story_reactions?.some((r: any) => r.user_id === user.id && r.reaction_type === reactionType) || false;
-  };
-
-  const getDisplayName = (story: any) => {
-    if (story.is_anonymous || story.profiles?.is_anonymous_mode) {
+  const getAuthorName = (story: any) => {
+    if (!story.profiles || story.profiles.is_anonymous_mode) {
       return 'Anonymous';
     }
-    return story.profiles?.first_name || 'Unknown';
+    return `${story.profiles.first_name} ${story.profiles.last_name}`;
+  };
+
+  const truncateContent = (content: string, maxLength: number = 200) => {
+    if (content.length <= maxLength) return content;
+    return content.substring(0, maxLength) + '...';
+  };
+
+  const handleReport = (contentId: string, authorId: string) => {
+    setReportModal({
+      isOpen: true,
+      contentId,
+      authorId
+    });
   };
 
   return (
     <div className="min-h-screen bg-navy-900">
       <Navigation />
-
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        {/* Header with SOS */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-2">Community Stories</h2>
-            <p className="text-gray-300">Share experiences and find support</p>
-          </div>
-          <SOSButton />
+      
+      <div className="max-w-6xl mx-auto py-8 px-6">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-white mb-4">Community Stories</h1>
+          <p className="text-xl text-gray-300">
+            Real experiences from men who've turned their failures into strength
+          </p>
         </div>
 
-        {/* Search and Filter */}
-        <div className="mb-8 space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search stories..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-navy-800 border-navy-600 text-white"
-              />
+        {/* Search and Filter Controls */}
+        <Card className="bg-navy-800 border-navy-700 mb-8">
+          <CardContent className="p-6">
+            <div className="grid md:grid-cols-4 gap-4">
+              <div className="md:col-span-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search stories..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 bg-navy-700 border-navy-600 text-white"
+                  />
+                </div>
+              </div>
+              
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="bg-navy-700 border-navy-600 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="most_engaging">Most Engaging</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filterTags} onValueChange={setFilterTags}>
+                <SelectTrigger className="bg-navy-700 border-navy-600 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Tags</SelectItem>
+                  {allTags.map((tag) => (
+                    <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex items-center space-x-2">
-              <Filter className="text-gray-400 w-4 h-4" />
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-navy-800 border border-navy-600 text-white rounded-md px-3 py-2"
+          </CardContent>
+        </Card>
+
+        {/* Stories Grid */}
+        {isLoading ? (
+          <div className="text-center py-12">
+            <p className="text-gray-400">Loading stories...</p>
+          </div>
+        ) : stories.length === 0 ? (
+          <div className="text-center py-12">
+            <BookOpen className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-400 mb-4">
+              {searchTerm || filterTags !== 'all' 
+                ? 'No stories match your search criteria' 
+                : 'No public stories yet'
+              }
+            </p>
+            {user && (
+              <Button 
+                onClick={() => window.location.href = '/journal'}
+                className="bg-gold-500 hover:bg-gold-600 text-navy-900"
               >
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category === 'all' ? 'All Categories' : category}
-                  </option>
-                ))}
-              </select>
-            </div>
+                Share Your Story
+              </Button>
+            )}
           </div>
-        </div>
-
-        {/* Stories Feed */}
-        <div className="space-y-6">
-          {stories?.map((story) => (
-            <Card key={story.id} className="bg-navy-800 border-navy-700 hover:bg-navy-750 transition-colors">
-              <CardContent className="p-6">
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xl font-semibold text-white">{story.title}</h3>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className="border-gold-400 text-gold-400">
-                        {story.category}
-                      </Badge>
+        ) : (
+          <div className="grid lg:grid-cols-2 gap-6">
+            {stories.map((story) => (
+              <Card key={story.id} className="bg-navy-800 border-navy-700 hover:bg-navy-750 transition-colors">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-white text-lg mb-2">{story.title}</CardTitle>
+                      <div className="flex items-center space-x-4 text-sm text-gray-400">
+                        <div className="flex items-center">
+                          <User className="w-4 h-4 mr-1" />
+                          {getAuthorName(story)}
+                        </div>
+                        <div className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-1" />
+                          {formatDate(story.created_at)}
+                        </div>
+                      </div>
+                    </div>
+                    {user && user.id !== story.user_id && (
                       <Button
-                        size="sm"
                         variant="ghost"
-                        onClick={() => setReportModal({
-                          isOpen: true,
-                          contentId: story.id,
-                          reportedUserId: story.user_id
-                        })}
+                        size="sm"
+                        onClick={() => handleReport(story.id, story.user_id)}
                         className="text-gray-400 hover:text-red-400"
                       >
                         <Flag className="w-4 h-4" />
                       </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-300 leading-relaxed mb-4">
+                    {truncateContent(story.content)}
+                  </p>
+                  
+                  {story.tags && story.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {story.tags.map((tag, index) => (
+                        <Badge key={index} variant="outline" className="border-gold-400 text-gold-400">
+                          {tag}
+                        </Badge>
+                      ))}
                     </div>
-                  </div>
-                  <p className="text-gray-300 leading-relaxed line-clamp-3">{story.content}</p>
-                </div>
+                  )}
 
-                <div className="flex items-center justify-between pt-4 border-t border-navy-600">
-                  <div className="flex items-center space-x-1 text-sm text-gray-400">
-                    <span>by</span>
-                    <span className="font-medium">{getDisplayName(story)}</span>
-                    <span>•</span>
-                    <span>{new Date(story.created_at).toLocaleDateString()}</span>
-                  </div>
-
-                  <div className="flex items-center space-x-4">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => reactionMutation.mutate({ storyId: story.id, reactionType: 'relate' })}
-                      className={`text-sm ${hasUserReacted(story, 'relate') ? 'text-gold-400' : 'text-gray-400'} hover:text-gold-300`}
-                    >
-                      <Heart className="w-4 h-4 mr-1" />
-                      I Relate ({getReactionCount(story, 'relate')})
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => reactionMutation.mutate({ storyId: story.id, reactionType: 'inspired' })}
-                      className={`text-sm ${hasUserReacted(story, 'inspired') ? 'text-gold-400' : 'text-gray-400'} hover:text-gold-300`}
-                    >
-                      <Users className="w-4 h-4 mr-1" />
-                      Inspired ({getReactionCount(story, 'inspired')})
-                    </Button>
-
-                    <Button size="sm" variant="ghost" className="text-gray-400 hover:text-gray-300">
-                      <MessageCircle className="w-4 h-4 mr-1" />
-                      Replies
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          {stories?.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-400 mb-4">No stories found</p>
-              <Button className="bg-gold-500 hover:bg-gold-600 text-navy-900">
-                Share Your Story
-              </Button>
-            </div>
-          )}
-        </div>
+                  {story.mood_before && story.mood_after && (
+                    <div className="flex items-center space-x-4 text-sm text-gray-400">
+                      <span>Mood: {story.mood_before} → {story.mood_after}</span>
+                      {story.mood_after > story.mood_before && (
+                        <span className="text-green-400">↑ Improved</span>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
+
+      <Footer />
 
       <ReportContent
         isOpen={reportModal.isOpen}
-        onClose={() => setReportModal({ isOpen: false, contentId: '', reportedUserId: '' })}
-        contentType="story"
+        onClose={() => setReportModal({ isOpen: false, contentId: '', authorId: '' })}
+        contentType="journal_entry"
         contentId={reportModal.contentId}
-        reportedUserId={reportModal.reportedUserId}
+        reportedUserId={reportModal.authorId}
       />
     </div>
   );
