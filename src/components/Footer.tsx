@@ -7,7 +7,7 @@ const Footer = () => {
   return (
     <footer className="py-12 px-6 bg-navy-900 border-t border-navy-700">
       <div className="max-w-6xl mx-auto">
-        <div className="grid md:grid-cols-4 gap-8 mb-8">
+        <div className="grid md:grid-cols-5 gap-8 mb-8">
           <div className="animate-fade-in">
             <h3 className="text-xl font-bold text-white mb-4">WhyFail.club</h3>
             <p className="text-gray-400 text-sm leading-relaxed">
@@ -16,6 +16,28 @@ const Footer = () => {
           </div>
           
           <div className="animate-slide-in" style={{ animationDelay: '0.1s' }}>
+            <h4 className="font-semibold text-white mb-4">About</h4>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <button 
+                  onClick={() => navigate('/about')}
+                  className="text-gray-400 hover:text-gold-400 transition-colors story-link"
+                >
+                  About Us
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => navigate('/community-guidelines')}
+                  className="text-gray-400 hover:text-gold-400 transition-colors story-link"
+                >
+                  Community Guidelines
+                </button>
+              </li>
+            </ul>
+          </div>
+          
+          <div className="animate-slide-in" style={{ animationDelay: '0.2s' }}>
             <h4 className="font-semibold text-white mb-4">Community</h4>
             <ul className="space-y-2 text-sm">
               <li>
@@ -36,16 +58,16 @@ const Footer = () => {
               </li>
               <li>
                 <button 
-                  onClick={() => navigate('/community-guidelines')}
+                  onClick={() => navigate('/mentalk')}
                   className="text-gray-400 hover:text-gold-400 transition-colors story-link"
                 >
-                  Community Guidelines
+                  MenTalk
                 </button>
               </li>
             </ul>
           </div>
           
-          <div className="animate-slide-in" style={{ animationDelay: '0.2s' }}>
+          <div className="animate-slide-in" style={{ animationDelay: '0.3s' }}>
             <h4 className="font-semibold text-white mb-4">Support</h4>
             <ul className="space-y-2 text-sm">
               <li>
@@ -75,7 +97,7 @@ const Footer = () => {
             </ul>
           </div>
           
-          <div className="animate-slide-in" style={{ animationDelay: '0.3s' }}>
+          <div className="animate-slide-in" style={{ animationDelay: '0.4s' }}>
             <h4 className="font-semibold text-white mb-4">Legal</h4>
             <ul className="space-y-2 text-sm">
               <li>
@@ -106,7 +128,7 @@ const Footer = () => {
           </div>
         </div>
         
-        <div className="border-t border-navy-700 pt-8 text-center animate-fade-in" style={{ animationDelay: '0.4s' }}>
+        <div className="border-t border-navy-700 pt-8 text-center animate-fade-in" style={{ animationDelay: '0.5s' }}>
           <p className="text-gray-400 text-sm">
             © 2025 WhyFail.club. All rights reserved. • Remember: You are not your failures.
           </p>

@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Journal from "./pages/Journal";
 import Stories from "./pages/Stories";
 import MenTalkPage from "./components/MenTalkPage";
+import About from "./pages/About";
 import CommunityGuidelines from "./pages/CommunityGuidelines";
 import Help from "./pages/Help";
 import CrisisResources from "./pages/CrisisResources";
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/journal" element={<Journal />} />
             <Route path="/stories" element={<Stories />} />
             <Route path="/mentalk" element={<MenTalkPage />} />
+            <Route path="/about" element={<About />} />
             <Route path="/community-guidelines" element={<CommunityGuidelines />} />
             <Route path="/help" element={<Help />} />
             <Route path="/crisis-resources" element={<CrisisResources />} />

@@ -3,18 +3,33 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Navigation = () => {
   const { toast } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "You have been signed out successfully.",
+        });
+        navigate('/');
+      }
+    } catch (error) {
       toast({
         title: "Error",
-        description: error.message,
+        description: "An unexpected error occurred while signing out.",
         variant: "destructive",
       });
     }
@@ -30,25 +45,25 @@ const Navigation = () => {
           <div className="flex space-x-6">
             <a 
               href="/dashboard" 
-              className={`${isActive('/dashboard') ? 'text-gold-400' : 'text-gray-300'} hover:text-gold-300`}
+              className={`${isActive('/dashboard') ? 'text-gold-400' : 'text-gray-300'} hover:text-gold-300 transition-colors`}
             >
               Dashboard
             </a>
             <a 
               href="/journal" 
-              className={`${isActive('/journal') ? 'text-gold-400' : 'text-gray-300'} hover:text-gold-300`}
+              className={`${isActive('/journal') ? 'text-gold-400' : 'text-gray-300'} hover:text-gold-300 transition-colors`}
             >
               Journal
             </a>
             <a 
               href="/stories" 
-              className={`${isActive('/stories') ? 'text-gold-400' : 'text-gray-300'} hover:text-gold-300`}
+              className={`${isActive('/stories') ? 'text-gold-400' : 'text-gray-300'} hover:text-gold-300 transition-colors`}
             >
               Stories
             </a>
             <a 
               href="/mentalk" 
-              className={`${isActive('/mentalk') ? 'text-gold-400' : 'text-gray-300'} hover:text-gold-300`}
+              className={`${isActive('/mentalk') ? 'text-gold-400' : 'text-gray-300'} hover:text-gold-300 transition-colors`}
             >
               MenTalk
             </a>
@@ -57,7 +72,7 @@ const Navigation = () => {
         <Button 
           onClick={handleSignOut}
           variant="outline"
-          className="border-gray-600 text-gray-300 hover:bg-navy-700"
+          className="border-gray-600 text-gray-300 hover:bg-navy-700 transition-colors"
         >
           Sign Out
         </Button>
