@@ -142,7 +142,7 @@ const CrisisResources = () => {
               If you or someone you know is experiencing any of these warning signs, please reach out for help immediately:
             </p>
             <ul className="grid md:grid-cols-2 gap-2">
-              {warningsigns.map((sign, index) => (
+              {warningSigns.map((sign, index) => (
                 <li key={index} className="text-gray-300 flex items-start">
                   <span className="text-red-400 mr-2 mt-1">•</span>
                   <span className="text-sm">{sign}</span>
