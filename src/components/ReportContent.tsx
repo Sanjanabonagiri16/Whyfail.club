@@ -9,6 +9,7 @@ import { Flag, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { useMutation } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ReportContentProps {
   isOpen: boolean;
@@ -26,14 +27,18 @@ const ReportContent: React.FC<ReportContentProps> = ({
   reportedUserId
 }) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [reason, setReason] = useState('');
   const [description, setDescription] = useState('');
 
   const reportMutation = useMutation({
     mutationFn: async () => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { error } = await supabase
         .from('content_reports')
         .insert({
+          reporter_id: user.id,
           reported_content_type: contentType,
           reported_content_id: contentId,
           reported_user_id: reportedUserId,

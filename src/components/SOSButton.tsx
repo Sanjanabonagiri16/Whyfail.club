@@ -9,6 +9,7 @@ import { AlertCircle, Phone, Heart, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { useMutation } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SOSButtonProps {
   className?: string;
@@ -16,6 +17,7 @@ interface SOSButtonProps {
 
 const SOSButton: React.FC<SOSButtonProps> = ({ className }) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [incidentType, setIncidentType] = useState('');
   const [description, setDescription] = useState('');
@@ -23,9 +25,12 @@ const SOSButton: React.FC<SOSButtonProps> = ({ className }) => {
 
   const sosMutation = useMutation({
     mutationFn: async () => {
+      if (!user) throw new Error('User not authenticated');
+      
       const { error } = await supabase
         .from('sos_incidents')
         .insert({
+          user_id: user.id,
           incident_type: incidentType,
           description: description.trim() || null,
           severity,

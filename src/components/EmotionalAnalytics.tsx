@@ -77,6 +77,14 @@ const EmotionalAnalytics: React.FC<EmotionalAnalyticsProps> = ({ userId }) => {
     }
   };
 
+  // Helper function to safely extract suggestion from insights
+  const getSuggestion = (insights: any) => {
+    if (insights && typeof insights === 'object' && 'suggestion' in insights) {
+      return insights.suggestion as string;
+    }
+    return null;
+  };
+
   return (
     <Card className="bg-navy-800 border-navy-700">
       <CardHeader>
@@ -131,11 +139,11 @@ const EmotionalAnalytics: React.FC<EmotionalAnalyticsProps> = ({ userId }) => {
               </div>
             )}
 
-            {analytics.insights?.suggestion && (
+            {getSuggestion(analytics.insights) && (
               <div className="bg-navy-700 p-3 rounded-lg">
                 <div className="flex items-start space-x-2">
                   <Target className="w-4 h-4 text-gold-400 mt-0.5" />
-                  <p className="text-gray-300 text-sm">{analytics.insights.suggestion}</p>
+                  <p className="text-gray-300 text-sm">{getSuggestion(analytics.insights)}</p>
                 </div>
               </div>
             )}
