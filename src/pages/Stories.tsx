@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
@@ -8,8 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Heart, MessageCircle, Users, Filter } from 'lucide-react';
+import { Search, Heart, MessageCircle, Users, Filter, Flag } from 'lucide-react';
 import Navigation from '@/components/Navigation';
+import ReportContent from '@/components/ReportContent';
+import SOSButton from '@/components/SOSButton';
 
 const Stories = () => {
   const { user, loading } = useAuth();
@@ -17,6 +20,11 @@ const Stories = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [reportModal, setReportModal] = useState<{
+    isOpen: boolean;
+    contentId: string;
+    reportedUserId: string;
+  }>({ isOpen: false, contentId: '', reportedUserId: '' });
 
   const categories = ['all', 'Career Failure', 'Relationship', 'Mental Health', 'Addiction', 'Loss', 'Other'];
 
@@ -39,23 +47,20 @@ const Stories = () => {
       const { data: storiesData, error } = await query;
       if (error) throw error;
 
-      // Fetch profiles separately
       const userIds = storiesData?.map(story => story.user_id) || [];
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, username')
+        .select('id, first_name, last_name, username, is_anonymous_mode')
         .in('id', userIds);
       
       if (profilesError) throw profilesError;
 
-      // Fetch reactions separately
       const { data: reactions, error: reactionsError } = await supabase
         .from('story_reactions')
         .select('*');
       
       if (reactionsError) throw reactionsError;
 
-      // Combine stories with their profiles and reactions
       const storiesWithData = storiesData?.map(story => {
         const profile = profiles?.find(p => p.id === story.user_id);
         return {
@@ -71,7 +76,6 @@ const Stories = () => {
 
   const reactionMutation = useMutation({
     mutationFn: async ({ storyId, reactionType }: { storyId: string, reactionType: string }) => {
-      // Check if user already reacted with this type
       const { data: existingReaction } = await supabase
         .from('story_reactions')
         .select('*')
@@ -81,14 +85,12 @@ const Stories = () => {
         .single();
 
       if (existingReaction) {
-        // Remove reaction
         const { error } = await supabase
           .from('story_reactions')
           .delete()
           .eq('id', existingReaction.id);
         if (error) throw error;
       } else {
-        // Add reaction
         const { error } = await supabase
           .from('story_reactions')
           .insert({
@@ -111,17 +113,6 @@ const Stories = () => {
     },
   });
 
-  const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-navy-900 flex items-center justify-center">
@@ -142,11 +133,27 @@ const Stories = () => {
     return story.story_reactions?.some((r: any) => r.user_id === user.id && r.reaction_type === reactionType) || false;
   };
 
+  const getDisplayName = (story: any) => {
+    if (story.is_anonymous || story.profiles?.is_anonymous_mode) {
+      return 'Anonymous';
+    }
+    return story.profiles?.first_name || 'Unknown';
+  };
+
   return (
     <div className="min-h-screen bg-navy-900">
       <Navigation />
 
       <div className="max-w-4xl mx-auto px-6 py-8">
+        {/* Header with SOS */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-3xl font-bold text-white mb-2">Community Stories</h2>
+            <p className="text-gray-300">Share experiences and find support</p>
+          </div>
+          <SOSButton />
+        </div>
+
         {/* Search and Filter */}
         <div className="mb-8 space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -184,9 +191,23 @@ const Stories = () => {
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xl font-semibold text-white">{story.title}</h3>
-                    <Badge variant="outline" className="border-gold-400 text-gold-400">
-                      {story.category}
-                    </Badge>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="border-gold-400 text-gold-400">
+                        {story.category}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setReportModal({
+                          isOpen: true,
+                          contentId: story.id,
+                          reportedUserId: story.user_id
+                        })}
+                        className="text-gray-400 hover:text-red-400"
+                      >
+                        <Flag className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-gray-300 leading-relaxed line-clamp-3">{story.content}</p>
                 </div>
@@ -194,18 +215,12 @@ const Stories = () => {
                 <div className="flex items-center justify-between pt-4 border-t border-navy-600">
                   <div className="flex items-center space-x-1 text-sm text-gray-400">
                     <span>by</span>
-                    <span className="font-medium">
-                      {story.is_anonymous 
-                        ? 'Anonymous' 
-                        : `${story.profiles?.first_name || 'Unknown'}`
-                      }
-                    </span>
+                    <span className="font-medium">{getDisplayName(story)}</span>
                     <span>•</span>
                     <span>{new Date(story.created_at).toLocaleDateString()}</span>
                   </div>
 
                   <div className="flex items-center space-x-4">
-                    {/* Reactions */}
                     <Button
                       size="sm"
                       variant="ghost"
@@ -246,6 +261,14 @@ const Stories = () => {
           )}
         </div>
       </div>
+
+      <ReportContent
+        isOpen={reportModal.isOpen}
+        onClose={() => setReportModal({ isOpen: false, contentId: '', reportedUserId: '' })}
+        contentType="story"
+        contentId={reportModal.contentId}
+        reportedUserId={reportModal.reportedUserId}
+      />
     </div>
   );
 };

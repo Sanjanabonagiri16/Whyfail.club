@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
@@ -9,8 +8,11 @@ import { useToast } from '@/components/ui/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusCircle, BookOpen, Calendar, Medal, Target } from 'lucide-react';
 import JournalEntryCard from '@/components/JournalEntryCard';
-import WriteJournalModal from '@/components/WriteJournalModal';
+import EnhancedJournalModal from '@/components/EnhancedJournalModal';
 import Navigation from '@/components/Navigation';
+import EmotionalAnalytics from '@/components/EmotionalAnalytics';
+import AnonymousModeToggle from '@/components/AnonymousModeToggle';
+import SOSButton from '@/components/SOSButton';
 
 const Journal = () => {
   const { user, loading } = useAuth();
@@ -51,16 +53,41 @@ const Journal = () => {
   });
 
   const createEntryMutation = useMutation({
-    mutationFn: async ({ title, content, isPublic }: { title: string, content: string, isPublic: boolean }) => {
-      const { error } = await supabase
+    mutationFn: async (entryData: {
+      title: string;
+      content: string;
+      isPublic: boolean;
+      bounceBackPlan?: string;
+      moodBefore?: number;
+      moodAfter?: number;
+      tags?: string[];
+    }) => {
+      const { data: newEntry, error } = await supabase
         .from('journal_entries')
         .insert({
-          title,
-          content,
-          is_public: isPublic,
+          title: entryData.title,
+          content: entryData.content,
+          is_public: entryData.isPublic,
+          bounce_back_plan: entryData.bounceBackPlan,
+          mood_before: entryData.moodBefore,
+          mood_after: entryData.moodAfter,
+          tags: entryData.tags,
           user_id: user!.id
-        });
+        })
+        .select()
+        .single();
+      
       if (error) throw error;
+
+      // Trigger content moderation
+      await supabase.rpc('moderate_content', {
+        content_text: `${entryData.title} ${entryData.content}`,
+        content_type_param: 'journal_entry',
+        content_id_param: newEntry.id,
+        user_id_param: user!.id
+      });
+
+      return newEntry;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
@@ -92,7 +119,7 @@ const Journal = () => {
   }
 
   const latestEntry = journalEntries?.[0];
-  const currentDay = 5; // This could be calculated based on user's journey start date
+  const currentDay = 5;
   const badges = ['Resilient Soul', 'Open Warrior', 'Truth Seeker'];
 
   return (
@@ -100,16 +127,28 @@ const Journal = () => {
       <Navigation />
 
       <div className="max-w-6xl mx-auto px-6 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-white mb-2">
-            Hello, {profile?.first_name || 'Warrior'} 👋
-          </h2>
-          <p className="text-gray-300">Your personal mental space for growth and reflection</p>
+        {/* Header with SOS */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-3xl font-bold text-white mb-2">
+              Hello, {profile?.first_name || 'Warrior'} 👋
+            </h2>
+            <p className="text-gray-300">Your personal mental space for growth and reflection</p>
+          </div>
+          <SOSButton />
+        </div>
+
+        {/* Privacy Control */}
+        <div className="mb-6">
+          <AnonymousModeToggle 
+            isAnonymous={profile?.is_anonymous_mode || false} 
+            userId={user.id} 
+          />
         </div>
 
         {/* Journey Overview Cards */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
+          {/* ... keep existing code (journey overview cards) */}
           <Card className="bg-navy-800 border-navy-700">
             <CardContent className="p-6">
               <div className="flex items-center space-x-3">
@@ -147,6 +186,11 @@ const Journal = () => {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Emotional Analytics */}
+        <div className="mb-8">
+          <EmotionalAnalytics userId={user.id} />
         </div>
 
         {/* Write New Journal Section */}
@@ -220,7 +264,7 @@ const Journal = () => {
         </Card>
       </div>
 
-      <WriteJournalModal 
+      <EnhancedJournalModal 
         isOpen={showWriteModal}
         onClose={() => setShowWriteModal(false)}
         onSubmit={createEntryMutation.mutate}
